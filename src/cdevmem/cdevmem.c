@@ -97,8 +97,10 @@ devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename){
     //devmem* devmemd = (devmem *)malloc(sizeof(devmem));
     devmem devmemd;
     memset(&devmemd, 0, sizeof(devmem));
-    devmemd.word = 4;
+    devmemd.word = 0x04;
+    //devmemd.word = 0x04000000;
     devmemd.mask = ~(devmemd.word - 1);
+    //devmemd.mask = (devmemd.word - 1);
 
     if (base_addr < 0 || length < 0){
         error("offset or length cant be < 0");
@@ -119,6 +121,7 @@ devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename){
 
 	//devmemd.virtual_base = mmap( NULL, 256, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, 0xff200000);
 	devmemd.virtual_base = mmap( NULL, devmemd.length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, devmemd.base_addr);
+	//devmemd.virtual_base = mmap( NULL, 0x04000000, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, devmemd.base_addr);
     if( devmemd.virtual_base == MAP_FAILED ) {
     	printf( "ERROR: mmap() failed...\n" );
     }
