@@ -89,7 +89,7 @@ void **list_to_array(list* l){
 }
 
 // devmem
-devmem make_devman(unsigned int base_addr, unsigned int length, char* filename){
+devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename){
     int fd;
     unsigned int stop;
 

@@ -61,7 +61,7 @@ void free_node(node* n);
 void free_list(list* l);
 void free_list_contents(list* l);
 void **list_to_array(list* l);
-devmem make_devman(unsigned int base_addr, unsigned int length, char* filename);
+devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename);
 devmembuffer make_devmembuffer(unsigned long base_addr, list* data);
 devmembuffer devmemread(devmem* devmemd, unsigned long offset, unsigned int length);
 void devmemwrite(devmem* devmemd, unsigned long offset, unsigned int* data);
