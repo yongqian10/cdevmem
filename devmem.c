@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -11,14 +12,14 @@
 #include <fcntl.h>
 
 // the Lightweight HPS-to-FPGA Bus base address offset
-#define HPS_LW_ADRS_OFFSET 4280287232
+#define HPS_LW_ADRS_OFFSET 0xFF200000
 
 // LTC2308 Address offset
-#define ADC_ADDRES_OFFSET 56
+#define ADC_ADDRES_OFFSET 0x38
 
 // Register set of the LTC230
-#define ADC_CMD_REG_OFFSET 0
-#define ADC_DATA_REG_OFFSET 4
+#define ADC_CMD_REG_OFFSET 0x00
+#define ADC_DATA_REG_OFFSET 0x04
 
 // FIFO Convention Data Size for average calculation
 #define FIFO_SIZE 2 // MAX=1024
@@ -138,7 +139,7 @@ void **list_to_array(list* l){
 
 typedef struct DevMemBuffer {
     unsigned long base_addr;
-    unsigned int* data;
+    list* data;
 } devmembuffer;
 
 // replace by make_list
@@ -177,14 +178,13 @@ devmem make_devman(unsigned int base_addr, unsigned int length, char* filename){
     devmemd.base_addr = base_addr & ~(PAGE_SIZE-1);
     devmemd.base_addr_offset = base_addr - devmemd.base_addr;
     stop = base_addr + length * devmemd.word;
-    unsigned int test = (stop % devmemd.mask);
     if (stop % devmemd.mask){
         stop = (stop + devmemd.word) &  ~(devmemd.word - 1);
     }
     devmemd.length = stop - devmemd.base_addr;
     devmemd.fname = filename;
 
-	if( ( fd = open( devmemd.fname, ( O_RDWR | O_SYNC ) ) ) == -1 ) {
+	if((fd = open( devmemd.fname, ( O_RDWR | O_SYNC))) == -1) {
 		file_error( "ERROR: could not open \"/dev/mem\"...\n" );
 	}
 
@@ -193,11 +193,10 @@ devmem make_devman(unsigned int base_addr, unsigned int length, char* filename){
     if( devmemd.virtual_base == MAP_FAILED ) {
     	printf( "ERROR: mmap() failed...\n" );
     }
-
     return devmemd;
 }
 
-devmembuffer make_devmembuffer(unsigned int base_addr, unsigned int* data){
+devmembuffer make_devmembuffer(unsigned long base_addr, list* data){
     devmembuffer devmembufferd;
     memset(&devmembufferd, 0, sizeof(devmembuffer));
     devmembufferd.base_addr = base_addr;
@@ -275,18 +274,17 @@ unsigned int length(void* array){
 }
 
 
-devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int length){
-    unsigned int data[length];
-    unsigned int virtual_base_addr;
-    unsigned int abs_addr;
+devmembuffer devmemread(devmem* devmemd, unsigned long offset, unsigned int length){
+    unsigned long abs_addr;
+    list* data = make_list();
 
     if (offset < 0 || length < 0){
         error("offset or length cant be < 0");
     }
 
-    virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
-    // aligned base based on offset
-    void* aligned_base = (void*)((unsigned int*)devmemd->virtual_base + virtual_base_addr + 1);
+    unsigned long virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
+
     //printf("%p\n", aligned_base);
 
     // # Read length words of size self.word and return it
@@ -296,10 +294,11 @@ devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int lengt
 
     // abs_addr = self.base_addr + virt_base_addr
     // return DevMemBuffer(abs_addr + offset, data)
+    //unsigned int tdata = *(uint16_t *)aligned_base;
 
-	for (char i = 0; i < length; i++) {
-            data[i] = *(unsigned int*)(aligned_base);
-        }
+	for(char i = 0; i < length; i++){
+        list_insert(data, (unsigned int*)(*(uint32_t *)aligned_base));
+    }
 
     abs_addr = devmemd->base_addr + virtual_base_addr;
     devmembuffer devmembufferd = make_devmembuffer(abs_addr  + offset, data);
@@ -347,42 +346,48 @@ int main(){
     //de = devmem.DevMem(HPS_LW_ADRS_OFFSET, ADC_ADDRES_OFFSET+0x8, "/dev/mem")
     // Set meassure number for ADC convert
     devmem devmemd = make_devman(HPS_LW_ADRS_OFFSET, ADC_ADDRES_OFFSET+8, "/dev/mem");
+    usleep(1);
     //de.write(ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,[FIFO_SIZE])
 
     int fifo_size = FIFO_SIZE;  
     devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &fifo_size);
+    usleep(1);
 
     // # Enable the convention with the selected Channel
     // de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
     ch_sw = ch << 1 | 0x00;
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &ch_sw);
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, &ch_sw);
+    usleep(1);
 
     // de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x01])
     ch_sw = ch << 1 | 0x01;
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &ch_sw);
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, &ch_sw);
+    usleep(1);
 
     // de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
     ch_sw = ch << 1 | 0x00;
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &ch_sw);
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, &ch_sw);
+    usleep(1);
 
     // timeout = 300 #ms
     // # Wait until convention is done or a timeout occurred
     // while (not(timeout == 0)):
-    while (devmemread(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1).data[0] & (1<<0)){
+    devmembuffer cresultlist = devmemread(&devmemd, ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET,1);
+    usleep(1);
+    while (((unsigned int)list_pop(cresultlist.data)) & (1<<0)){
         count += 1;
         printf("its counting ... %d\n", count);
-        continue;
     };
-    //         break
-
-    //     timeout = timeout -1
-    //     time.sleep(.001) # delay 1ms
 
     // # calculate the average of the FIFO
     unsigned int rawValue = 0;
-    for(int i; i<FIFO_SIZE; i++){
-        rawValue = rawValue+ (devmemread(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1)).data[0];
+    devmembuffer resultlist = devmemread(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1);
+    usleep(1);
+    for (int i; i<FIFO_SIZE; i++){
+        rawValue = (unsigned int)list_pop(resultlist.data);
+        printf("rawValue is %u\n", rawValue);
     }
+
     // value = rawValue / FIFO_SIZE
 
     // # Convert ADC Value to Volage
