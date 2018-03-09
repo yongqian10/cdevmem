@@ -21,10 +21,6 @@ typedef struct DevMem {
     void* virtual_base;
 } devmem;
 
-typedef struct DevMemBuffer {
-    int base_addr;
-    list* data;
-} devmembuffer;
 
 // linked list
 typedef struct node{
@@ -105,6 +101,11 @@ void **list_to_array(list* l){
     }
     return a;
 }
+
+typedef struct DevMemBuffer {
+    int base_addr;
+    list* data;
+} devmembuffer;
 
 // replace by make_list
 //void devmembuffer_init(devmembuffer* memstruct, int* data){
