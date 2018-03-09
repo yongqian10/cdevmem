@@ -29,10 +29,10 @@ typedef struct Words {
 } word;
 
 typedef struct DevMem {
-    unsigned int base_addr;
-    unsigned int base_addr_offset;
+    unsigned long base_addr;
+    unsigned long base_addr_offset;
     unsigned int word;
-    unsigned int mask;
+    int mask;
     unsigned int length;
     char* fname;
     void* virtual_base;
@@ -137,7 +137,7 @@ void **list_to_array(list* l){
 }
 
 typedef struct DevMemBuffer {
-    unsigned int base_addr;
+    unsigned long base_addr;
     unsigned int* data;
 } devmembuffer;
 
@@ -169,8 +169,7 @@ devmem make_devman(unsigned int base_addr, unsigned int length, char* filename){
     devmem devmemd;
     memset(&devmemd, 0, sizeof(devmem));
     devmemd.word = 4;
-    devmemd.mask = (int)~(devmemd.word - 1);
-    printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+    devmemd.mask = ~(devmemd.word - 1);
 
     if (base_addr < 0 || length < 0){
         error("offset or length cant be < 0");
@@ -178,47 +177,22 @@ devmem make_devman(unsigned int base_addr, unsigned int length, char* filename){
     devmemd.base_addr = base_addr & ~(PAGE_SIZE-1);
     devmemd.base_addr_offset = base_addr - devmemd.base_addr;
     stop = base_addr + length * devmemd.word;
-    printf("stop is %u\n", stop);
     unsigned int test = (stop % devmemd.mask);
-    printf("mask is %d\n", devmemd.mask);
-    printf("test is %u\n", test);
     if (stop % devmemd.mask){
         stop = (stop + devmemd.word) &  ~(devmemd.word - 1);
     }
-
-    printf("%u\n", stop);
-    printf("%u\n", devmemd.base_addr);
     devmemd.length = stop - devmemd.base_addr;
-    printf("%u\n", devmemd.length);
     devmemd.fname = filename;
 
 	if( ( fd = open( devmemd.fname, ( O_RDWR | O_SYNC ) ) ) == -1 ) {
 		file_error( "ERROR: could not open \"/dev/mem\"...\n" );
 	}
 
-	devmemd.virtual_base = mmap( NULL, 256, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, 0xff200000);
+	//devmemd.virtual_base = mmap( NULL, 256, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, 0xff200000);
+	devmemd.virtual_base = mmap( NULL, devmemd.length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, devmemd.base_addr);
     if( devmemd.virtual_base == MAP_FAILED ) {
     	printf( "ERROR: mmap() failed...\n" );
     }
-
-	//if( devmemd.virtual_base == MAP_FAILED ) {
-	//	perror("Virtual_addr_in mappong for absolute memory access failed!\n");
-	//	close( fd );
-	//	return(-1);
-	//}
-    unsigned int value = 255; 
-    void* aligned_base = devmemd.virtual_base + (unsigned long)60;
-    // # Read until the end of our aligned address
-    // for i in range(0, len(din), self.word):
-    //     self.debug('writing at position = {0}: 0x{1:x}'.
-    //                 format(self.mem.tell(), din[i]))
-    //     # Write one word at a time
-    //     mem.write(struct.pack('I', din[i]))
-
-    //*(unsigned int*)(aligned_base) = data[0];    // write 1 word at a time
-	*(uint32_t *)aligned_base |= 0x00000001 << 2;
-	//*addr32 = value;
-	printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
     return devmemd;
 }
@@ -333,7 +307,7 @@ devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int lengt
 }
 
 
-void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
+void devmemwrite(devmem* devmemd, unsigned long offset, unsigned int* data){
     if (offset < 0 || length(data) <= 0){
 		error( "ERROR: offset or data length cannot smaller than 0");
     }
@@ -347,8 +321,9 @@ void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
     }
 
     // # Seek to the aligned offset
-    unsigned int virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
-    void* aligned_base = (void*)((unsigned int*)devmemd->virtual_base + virtual_base_addr + 1);
+    unsigned long virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    printf("virtual_base_addr is %d\n", virtual_base_addr);
+    void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
     // # Read until the end of our aligned address
     // for i in range(0, len(din), self.word):
     //     self.debug('writing at position = {0}: 0x{1:x}'.
@@ -356,7 +331,7 @@ void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
     //     # Write one word at a time
     //     mem.write(struct.pack('I', din[i]))
     for(char i=0; i<length(data); i+=devmemd->word){
-        aligned_base = &data[i];    // write 1 word at a time
+        *(uint32_t *)aligned_base = data[i];    // write 1 word at a time
     }
 }
 
@@ -364,7 +339,8 @@ void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
 int main(){
     unsigned int ch = 0;
     unsigned int ch_sw;
-    unsigned int data ;
+    unsigned int data;
+    unsigned int count;
 
     printf(" congrats\n");
     // try cdevmem
@@ -372,7 +348,6 @@ int main(){
     // Set meassure number for ADC convert
     devmem devmemd = make_devman(HPS_LW_ADRS_OFFSET, ADC_ADDRES_OFFSET+8, "/dev/mem");
     //de.write(ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,[FIFO_SIZE])
-
 
     int fifo_size = FIFO_SIZE;  
     devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &fifo_size);
@@ -393,7 +368,11 @@ int main(){
     // timeout = 300 #ms
     // # Wait until convention is done or a timeout occurred
     // while (not(timeout == 0)):
-    while (devmemread(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1).data[0] & (1<<0));
+    while (devmemread(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1).data[0] & (1<<0)){
+        count += 1;
+        printf("its counting ... %d\n", count);
+        continue;
+    };
     //         break
 
     //     timeout = timeout -1
