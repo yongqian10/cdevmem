@@ -89,7 +89,7 @@ void **list_to_array(list* l){
 }
 
 // devmem
-devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename){
+devmem make_devmem(unsigned int base_addr, unsigned int offset, unsigned int length, char* filename){
     int fd;
     unsigned int stop;
 
@@ -118,6 +118,7 @@ devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename){
 		file_error( "ERROR: could not open \"/dev/mem\"...\n" );
 	}
     devmemd.fd = fd;
+    devmemd.offset = offset;
 
 	//devmemd.virtual_base = mmap( NULL, 256, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, 0xff200000);
 	devmemd.virtual_base = mmap( NULL, devmemd.length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, devmemd.base_addr);
@@ -129,7 +130,7 @@ devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename){
     return devmemd;
 }
 
-devmembuffer make_devmembuffer(unsigned long base_addr, list* data){
+devmembuffer make_devmembuffer(unsigned int base_addr, list* data){
     devmembuffer devmembufferd;
     memset(&devmembufferd, 0, sizeof(devmembuffer));
     devmembufferd.base_addr = base_addr;
@@ -142,15 +143,15 @@ unsigned int length(void* array){
     int length = sizeof array / sizeof *array;
 }
 
-devmembuffer devmemread(devmem* devmemd, unsigned long offset, unsigned int length){
-    unsigned long abs_addr;
+devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int length){
+    unsigned int abs_addr;
     list* data = make_list();
 
     if (offset < 0 || length < 0){
         error("offset or length cant be < 0");
     }
 
-    unsigned long virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    unsigned int virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
 
 	for(char i = 0; i < length; i++){
@@ -164,7 +165,7 @@ devmembuffer devmemread(devmem* devmemd, unsigned long offset, unsigned int leng
 }
 
 
-void devmemwrite(devmem* devmemd, unsigned long offset, unsigned int* data){
+void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
     if (offset < 0 || length(data) <= 0){
 		error( "ERROR: offset or data length cannot smaller than 0");
     }
@@ -178,7 +179,7 @@ void devmemwrite(devmem* devmemd, unsigned long offset, unsigned int* data){
     }
 
     // # Seek to the aligned offset
-    unsigned long virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    unsigned int virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
 
     for(char i=0; i<length(data); i+=devmemd->word){
@@ -187,7 +188,7 @@ void devmemwrite(devmem* devmemd, unsigned long offset, unsigned int* data){
     }
 }
 
-void devmemwritebit(devmem* devmemd, unsigned long offset, unsigned int bit, bool setbit){
+void devmemwritebit(devmem* devmemd, unsigned int offset, unsigned int bit, bool setbit){
     //if (offset < 0 || length(bit) <= 0){
     if (offset < 0) {
 		error( "ERROR: offset cannot smaller than 0");
@@ -202,7 +203,7 @@ void devmemwritebit(devmem* devmemd, unsigned long offset, unsigned int bit, boo
     }
 
     // # Seek to the aligned offset
-    unsigned long virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    unsigned int virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
 
 	if(setbit){

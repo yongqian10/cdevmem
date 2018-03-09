@@ -21,8 +21,9 @@ typedef struct Words {
 } word;
 
 typedef struct DevMem {
-    unsigned long base_addr;
-    unsigned long base_addr_offset;
+    unsigned int base_addr;
+    unsigned int base_addr_offset;
+    unsigned int offset;
     unsigned int word;
     int mask;
     unsigned int length;
@@ -45,7 +46,7 @@ typedef struct list{
 } list;
 
 typedef struct DevMemBuffer {
-    unsigned long base_addr;
+    unsigned int base_addr;
     list* data;
 } devmembuffer;
 
@@ -61,10 +62,10 @@ void free_node(node* n);
 void free_list(list* l);
 void free_list_contents(list* l);
 void **list_to_array(list* l);
-devmem make_devmem(unsigned int base_addr, unsigned int length, char* filename);
-devmembuffer make_devmembuffer(unsigned long base_addr, list* data);
-devmembuffer devmemread(devmem* devmemd, unsigned long offset, unsigned int length);
-void devmemwrite(devmem* devmemd, unsigned long offset, unsigned int* data);
-void devmemwritebit(devmem* devmemd, unsigned long offset, unsigned int bit, bool setbit);
+devmem make_devmem(unsigned int base_addr, unsigned int offset, unsigned int length, char* filename);
+devmembuffer make_devmembuffer(unsigned int base_addr, list* data);
+devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int length);
+void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data);
+void devmemwritebit(devmem* devmemd, unsigned int offset, unsigned int bit, bool setbit);
 
 #endif
