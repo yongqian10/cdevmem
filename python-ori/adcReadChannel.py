@@ -24,7 +24,7 @@ import devmem
 HPS_LW_ADRS_OFFSET = 0xFF200000
 
 # LTC2308 Address offset
-ADC_ADDRES_OFFSET = 0x40
+ADC_ADDRES_OFFSET = 0x38
 
 # Register set of the LTC2308
 ADC_CMD_REG_OFFSET  = 0x0
@@ -32,7 +32,7 @@ ADC_DATA_REG_OFFSET = 0x4
 
 
 ### FIFO Convention Data Size for average calculation
-FIFO_SIZE = 255 # MAX=1024
+FIFO_SIZE = 2 # MAX=1024
 
 if __name__ == '__main__':
 
@@ -57,28 +57,28 @@ if __name__ == '__main__':
     # Set meassure number for ADC convert
     de.write(ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,[FIFO_SIZE])
     # Enable the convention with the selected Channel
-    de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
-    de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x01])
-    de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
+   # de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
+   # de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x01])
+   # de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
 
-    timeout = 300 #ms
-    # Wait until convention is done or a timeout occurred
-    while (not(timeout == 0)):
-        if(de.read(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET,1)[0] & (1<<0)):
-            break
+   # timeout = 300 #ms
+   # # Wait until convention is done or a timeout occurred
+   # while (not(timeout == 0)):
+   #     if(de.read(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET,1)[0] & (1<<0)):
+   #         break
 
-        timeout = timeout -1
-        time.sleep(.001) # delay 1ms
+   #     timeout = timeout -1
+   #     time.sleep(.001) # delay 1ms
 
-    # calculate the average of the FIFO
-    rawValue = 0
-    for i in range(FIFO_SIZE):
-        rawValue = rawValue+ (de.read(ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1))[0]
+   # # calculate the average of the FIFO
+   # rawValue = 0
+   # for i in range(FIFO_SIZE):
+   #     rawValue = rawValue+ (de.read(ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,1))[0]
 
-    value = rawValue / FIFO_SIZE
+   # value = rawValue / FIFO_SIZE
 
-    # Convert ADC Value to Volage
-    volage = round(value/1000,2)
-    # print the Value
-    print(str(volage))
+   # # Convert ADC Value to Volage
+   # volage = round(value/1000,2)
+   # # print the Value
+   # print(str(volage))
 

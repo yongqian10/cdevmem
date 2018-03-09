@@ -11,21 +11,21 @@
 #include <fcntl.h>
 
 // the Lightweight HPS-to-FPGA Bus base address offset
-#define HPS_LW_ADRS_OFFSET 0xFF200000
+#define HPS_LW_ADRS_OFFSET 4280287232
 
 // LTC2308 Address offset
-#define ADC_ADDRES_OFFSET 0x38
+#define ADC_ADDRES_OFFSET 56
 
 // Register set of the LTC230
-#define ADC_CMD_REG_OFFSET 0x0
-#define ADC_DATA_REG_OFFSET 0x4
+#define ADC_CMD_REG_OFFSET 0
+#define ADC_DATA_REG_OFFSET 4
 
 // FIFO Convention Data Size for average calculation
 #define FIFO_SIZE 2 // MAX=1024
 
 typedef struct Words {
     unsigned int size;
-    unsigned int mask;
+    int mask;
 } word;
 
 typedef struct DevMem {
@@ -169,32 +169,57 @@ devmem make_devman(unsigned int base_addr, unsigned int length, char* filename){
     devmem devmemd;
     memset(&devmemd, 0, sizeof(devmem));
     devmemd.word = 4;
-    devmemd.mask = ~(devmemd.word - 1);
+    devmemd.mask = (int)~(devmemd.word - 1);
+    printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 
     if (base_addr < 0 || length < 0){
         error("offset or length cant be < 0");
     }
     devmemd.base_addr = base_addr & ~(PAGE_SIZE-1);
     devmemd.base_addr_offset = base_addr - devmemd.base_addr;
-
     stop = base_addr + length * devmemd.word;
+    printf("stop is %u\n", stop);
+    unsigned int test = (stop % devmemd.mask);
+    printf("mask is %d\n", devmemd.mask);
+    printf("test is %u\n", test);
     if (stop % devmemd.mask){
         stop = (stop + devmemd.word) &  ~(devmemd.word - 1);
     }
+
+    printf("%u\n", stop);
+    printf("%u\n", devmemd.base_addr);
     devmemd.length = stop - devmemd.base_addr;
+    printf("%u\n", devmemd.length);
     devmemd.fname = filename;
 
 	if( ( fd = open( devmemd.fname, ( O_RDWR | O_SYNC ) ) ) == -1 ) {
 		file_error( "ERROR: could not open \"/dev/mem\"...\n" );
 	}
 
-	devmemd.virtual_base = mmap( NULL, devmemd.length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, devmemd.base_addr );
+	devmemd.virtual_base = mmap( NULL, 256, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, 0xff200000);
+    if( devmemd.virtual_base == MAP_FAILED ) {
+    	printf( "ERROR: mmap() failed...\n" );
+    }
 
 	//if( devmemd.virtual_base == MAP_FAILED ) {
 	//	perror("Virtual_addr_in mappong for absolute memory access failed!\n");
 	//	close( fd );
 	//	return(-1);
 	//}
+    unsigned int value = 255; 
+    void* aligned_base = devmemd.virtual_base + (unsigned long)60;
+    // # Read until the end of our aligned address
+    // for i in range(0, len(din), self.word):
+    //     self.debug('writing at position = {0}: 0x{1:x}'.
+    //                 format(self.mem.tell(), din[i]))
+    //     # Write one word at a time
+    //     mem.write(struct.pack('I', din[i]))
+
+    //*(unsigned int*)(aligned_base) = data[0];    // write 1 word at a time
+	*(uint32_t *)aligned_base |= 0x00000001 << 2;
+	//*addr32 = value;
+	printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
     return devmemd;
 }
 
@@ -234,6 +259,42 @@ char* dec2hex_arr(int dec){
     return hexcode;
 }
 
+unsigned int hex2dec(char hexVal[]){
+    int len = strlen(hexVal); 
+      
+    // Initializing base value to 1, i.e 16^0 
+    int base = 1; 
+      
+    int dec_val = 0; 
+      
+    // Extracting characters as digits from last character 
+    for (int i=len-1; i>=0; i--) 
+    {    
+        // if character lies in '0'-'9', converting  
+        // it to integral 0-9 by subtracting 48 from 
+        // ASCII value. 
+        if (hexVal[i]>='0' && hexVal[i]<='9') 
+        { 
+            dec_val += (hexVal[i] - 48)*base; 
+                  
+            // incrementing base by power 
+            base = base * 16; 
+        } 
+  
+        // if character lies in 'A'-'F' , converting  
+        // it to integral 10 - 15 by subtracting 55  
+        // from ASCII value 
+        else if (hexVal[i]>='A' && hexVal[i]<='F') 
+        { 
+            dec_val += (hexVal[i] - 55)*base; 
+          
+            // incrementing base by power 
+            base = base*16; 
+        } 
+    } 
+    return dec_val; 
+} 
+
 // find length utility
 unsigned int length(void* array){
     int length = sizeof array / sizeof *array;
@@ -252,6 +313,7 @@ devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int lengt
     virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     // aligned base based on offset
     void* aligned_base = (void*)((unsigned int*)devmemd->virtual_base + virtual_base_addr + 1);
+    //printf("%p\n", aligned_base);
 
     // # Read length words of size self.word and return it
     // data = []
@@ -287,7 +349,6 @@ void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
     // # Seek to the aligned offset
     unsigned int virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     void* aligned_base = (void*)((unsigned int*)devmemd->virtual_base + virtual_base_addr + 1);
-
     // # Read until the end of our aligned address
     // for i in range(0, len(din), self.word):
     //     self.debug('writing at position = {0}: 0x{1:x}'.
@@ -307,27 +368,27 @@ int main(){
 
     printf(" congrats\n");
     // try cdevmem
-
     //de = devmem.DevMem(HPS_LW_ADRS_OFFSET, ADC_ADDRES_OFFSET+0x8, "/dev/mem")
     // Set meassure number for ADC convert
-    devmem devmemd = make_devman(HPS_LW_ADRS_OFFSET, ADC_ADDRES_OFFSET+0x8, "/dev/mem");
-    
+    devmem devmemd = make_devman(HPS_LW_ADRS_OFFSET, ADC_ADDRES_OFFSET+8, "/dev/mem");
     //de.write(ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET,[FIFO_SIZE])
-    // data = FIFO_SIZE;  
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, (unsigned int*)FIFO_SIZE);
+
+
+    int fifo_size = FIFO_SIZE;  
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &fifo_size);
 
     // # Enable the convention with the selected Channel
     // de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
     ch_sw = ch << 1 | 0x00;
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, (unsigned int*)ch_sw);
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &ch_sw);
 
     // de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x01])
     ch_sw = ch << 1 | 0x01;
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, (unsigned int*)ch_sw);
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &ch_sw);
 
     // de.write(ADC_ADDRES_OFFSET+ADC_CMD_REG_OFFSET, [(ch <<1) | 0x00])
     ch_sw = ch << 1 | 0x00;
-    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, (unsigned int*)ch_sw);
+    devmemwrite(&devmemd, ADC_ADDRES_OFFSET+ADC_DATA_REG_OFFSET, &ch_sw);
 
     // timeout = 300 #ms
     // # Wait until convention is done or a timeout occurred

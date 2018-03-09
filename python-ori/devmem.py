@@ -95,17 +95,27 @@ class DevMem:
     def __init__(self, base_addr, length = 1, filename = '/dev/mem',
                  debug = 0):
 
+        print(f'length is {length}')
         if base_addr < 0 or length < 0: raise AssertionError
         self._debug = debug
 
         self.base_addr = base_addr & ~(mmap.PAGESIZE - 1)
+        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        print(f'mask during init is {self.mask}')
+        print(f'base_addr is {base_addr}')
+        print(f'base_addr adjusted during init is {self.base_addr}')
         self.base_addr_offset = base_addr - self.base_addr
-
+        print(f'base_addr_offset during init is {self.base_addr_offset}')
+        print('#################################################################3')
         stop = base_addr + length * self.word
+        print(stop % self.mask)
+        print(f'stop is {stop}')
         if (stop % self.mask):
             stop = (stop + self.word) & ~(self.word - 1)
+            print(f'stop adjusted is {stop}')
 
         self.length = stop - self.base_addr
+        print(f'real length is {self.length}')
         self.fname = filename
 
         # Check filesize (doesn't work with /dev/mem)
@@ -131,6 +141,7 @@ class DevMem:
 
         # Make reading easier (and faster... won't resolve dot in loops)
         mem = self.mem
+        print(f'mem during read is {mem}')
 
         self.debug('reading {0} bytes from offset {1}'.
                    format(length * self.word, hex(offset)))
@@ -138,12 +149,19 @@ class DevMem:
         # Compensate for the base_address not being what the user requested
         # and then seek to the aligned offset.
         virt_base_addr = self.base_addr_offset & self.mask
+        print(f'base_addr_offset during read is {self.base_addr_offset}')
+        print(f'mask during read is {self.mask}')
+        print(f'virt_base_addr during read is {virt_base_addr}')
+        print(f'addr after add offset during read is {virt_base_addr + offset}')
         mem.seek(virt_base_addr + offset)
+        print(f'mem after seek during read is {mem}')
 
         # Read length words of size self.word and return it
         data = []
         for i in range(length):
             data.append(struct.unpack('I', mem.read(self.word))[0])
+
+        print(f'data contain is {data}')
 
         abs_addr = self.base_addr + virt_base_addr
         return DevMemBuffer(abs_addr + offset, data)
@@ -169,6 +187,7 @@ class DevMem:
 
         # Seek to the aligned offset
         virt_base_addr = self.base_addr_offset & self.mask
+        print(f'virt_base_addr during write is {virt_base_addr + offset}')
         mem.seek(virt_base_addr + offset)
 
         # Read until the end of our aligned address
