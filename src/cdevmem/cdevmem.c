@@ -126,7 +126,7 @@ devmem make_devmem(unsigned int base_addr, unsigned int offset, unsigned int len
     if( devmemd.virtual_base == MAP_FAILED ) {
     	printf( "ERROR: mmap() failed...\n" );
     }
-	usleep( 1 );
+	//usleep( 1 );
     return devmemd;
 }
 
@@ -141,6 +141,7 @@ devmembuffer make_devmembuffer(unsigned int base_addr, list* data){
 // find length utility
 unsigned int length(void* array){
     int length = sizeof array / sizeof *array;
+    return length;
 }
 
 devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int length){
@@ -156,7 +157,7 @@ devmembuffer devmemread(devmem* devmemd, unsigned int offset, unsigned int lengt
 
 	for(char i = 0; i < length; i++){
         list_insert(data, (unsigned int*)(*(uint32_t *)aligned_base));
-	    usleep( 1 );
+	    //usleep( 1 );
     }
 
     abs_addr = devmemd->base_addr + virtual_base_addr;
@@ -184,7 +185,7 @@ void devmemwrite(devmem* devmemd, unsigned int offset, unsigned int* data){
 
     for(char i=0; i<length(data); i+=devmemd->word){
         *(uint32_t *)aligned_base = data[i];    // write 1 word at a time
-	    usleep( 1 );
+	    //usleep( 1 );
     }
 }
 
@@ -212,5 +213,5 @@ void devmemwritebit(devmem* devmemd, unsigned int offset, unsigned int bit, bool
 	else{
 		*(uint32_t *)aligned_base &= ~(0x00000001 << bit);
 	}
-	usleep( 1 );
+	//usleep( 1 );
 }
