@@ -228,8 +228,9 @@ unsigned int length(void* array){
 
 
 devmembuffer read(devmem* devmemd, int offset, int length){
-    int data[length][3];
-    int virtual_base_addr;
+    unsigned int data[length];
+    unsigned int virtual_base_addr;
+    unsigned int abs_addr;
 
     if (offset < 0 || length < 0){
         error("offset or length cant be < 0");
@@ -237,7 +238,7 @@ devmembuffer read(devmem* devmemd, int offset, int length){
 
     virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     // aligned base based on offset
-    void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
+    void* aligned_base = (void*)((unsigned int*)devmemd->virtual_base + virtual_base + 1);
 
     // # Read length words of size self.word and return it
     // data = []
@@ -247,10 +248,8 @@ devmembuffer read(devmem* devmemd, int offset, int length){
     // abs_addr = self.base_addr + virt_base_addr
     // return DevMemBuffer(abs_addr + offset, data)
 
-
-	for (int i = 0; i < length; i++) {
-    	for (int j = 0; j < 4; j++) {
-            concatenate(data[i][j], aligned_base++);
+	for (char i = 0; i < length; i++) {
+            unsigned int data[i] = *(unsigned int*)(aligned_base);
         }
     }
 
@@ -260,7 +259,7 @@ devmembuffer read(devmem* devmemd, int offset, int length){
 }
 
 
-void write(devmem* devmemd, int offset, int* data){
+void write(devmem* devmemd, unsigned int offset, unsigned int* data){
     unsigned int* sdata;
 
     if (offset < 0 or length(data) <= 0){
@@ -276,8 +275,8 @@ void write(devmem* devmemd, int offset, int* data){
     }
 
     // # Seek to the aligned offset
-    virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
-    void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
+    unsigned int virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    void* aligned_base = (void*)((unsigned int*)devmemd->virtual_base + virtual_base + 1);
 
     // # Read until the end of our aligned address
     // for i in range(0, len(din), self.word):
@@ -286,14 +285,7 @@ void write(devmem* devmemd, int offset, int* data){
     //     # Write one word at a time
     //     mem.write(struct.pack('I', din[i]))
     for(i=0; i<length(data), i+=devmemd->word){
-        sdata[3] = (data[i]);
-        sdata[2] = (data[i] >> 4u);
-        sdata[1] = (data[i] >> 8u);
-        sdata[0] = (data[i] >> 12u);
-
-    	for (j = 0; j < 4; j++) {
-			*aligned_base++ = sdata[j];
-        }
+        aligned_base = &data[i];    // write 1 word at a time
     }
 }
 

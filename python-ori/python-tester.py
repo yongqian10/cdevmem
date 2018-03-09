@@ -31,10 +31,11 @@ def mmap_io(base_addr, slength=8, fname='/dev/mem'):
             mmap.PROT_READ | mmap.PROT_WRITE,
             offset=base_addr)
 
-    mem.seek(0)
-    print(mem.read(8))
-    mem.write(struct.pack('I', 564))
-    print(mem.read(4))
+    mem.seek(0,0)
+    #print(mem.read(10))
+    mem.write(struct.pack('I', 54000))
+    mem.seek(0,0)
+    print(mem.read(10))
 
 
     #print(struct.pack('I', 240))
@@ -47,5 +48,5 @@ def mmap_io(base_addr, slength=8, fname='/dev/mem'):
 
 
 if __name__ == '__main__':
-    mmap_io(0x0, 0x10, './hello.txt')
+    mmap_io(0x0, 0x10, './hello')
 

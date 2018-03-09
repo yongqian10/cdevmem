@@ -51,7 +51,7 @@ printf("%c\n", hexcode[0]);
 
 int charnum = 60000;
 aligned_base = &charnum;
-int data = *(int*)(aligned_base+1);
+int data = *(char*)(aligned_base+1);
 printf("%d\n", data);
 
 
