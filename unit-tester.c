@@ -19,13 +19,43 @@ unsigned char *read_file(char *filename)
     return text;
 }
 
+char* dec2hex_arr(int dec){
+    int quotient, rem;
+    int i, j = 0;
+    static char hexcode[100];
+
+    quotient = dec;
+
+    while(quotient != 0){
+        rem = quotient % 16;
+        if (rem < 10)
+            hexcode[j++] = 48 + rem;
+        else 
+            hexcode[j++] = 55 + rem;
+        
+        quotient = quotient / 16;
+    }
+    return hexcode;
+}
+
 int main(){
 int fd = open("/dev/mem", (O_RDWR | O_SYNC));
 void* virtual_base = mmap(NULL, 0x04, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, 0x00 );
 //// aligned base based on offset
-void* aligned_base = (void*)((char*)virtual_base + 10);
+void* aligned_base = (void*)((char*)virtual_base + 1);
 printf("%p\n", virtual_base);
 printf("%p\n", aligned_base);
+
+char* hexcode = dec2hex_arr(255);
+printf("%c\n", hexcode[0]);
+
+int charnum = 60000;
+aligned_base = &charnum;
+int data = *(int*)(aligned_base+1);
+printf("%d\n", data);
+
+
+
 //
 //
 //// small test snippet

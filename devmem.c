@@ -201,6 +201,26 @@ unsigned int concatenate(unsigned x, unsigned y) {
     return x * pow + y;
 }
 
+// dec to hex array
+char* dec2hex_arr(int dec){
+    int quotient, rem;
+    int i, j = 0;
+    static char hexcode[100];
+
+    quotient = dec;
+
+    while(quotient != 0){
+        rem = quotient % 16;
+        if (rem < 10)
+            hexcode[j++] = 48 + rem;
+        else 
+            hexcode[j++] = 55 + rem;
+        
+        quotient = quotient / 16;
+    }
+    return hexcode;
+}
+
 // find length utility
 unsigned int length(void* array){
     int length = sizeof array / sizeof *array;
@@ -208,7 +228,7 @@ unsigned int length(void* array){
 
 
 devmembuffer read(devmem* devmemd, int offset, int length){
-    int data[length];
+    int data[length][3];
     int virtual_base_addr;
 
     if (offset < 0 || length < 0){
@@ -228,9 +248,9 @@ devmembuffer read(devmem* devmemd, int offset, int length){
     // return DevMemBuffer(abs_addr + offset, data)
 
 
-	for (i = 0; i < length; i++) {
-    	for (j = 0; j < 4; j++) {
-            concatenate(data[i], aligned_base++);
+	for (int i = 0; i < length; i++) {
+    	for (int j = 0; j < 4; j++) {
+            concatenate(data[i][j], aligned_base++);
         }
     }
 
