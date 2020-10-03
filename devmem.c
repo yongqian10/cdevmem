@@ -130,7 +130,7 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     int stop;
 
     const int PAGE_SIZE = 4096;
-    devmem* devmemd = (devmem *);malloc(sizeof(devmem));
+    devmem* devmemd = (devmem *)malloc(sizeof(devmem));
     devmemd->word = 4;
     devmemd->mask = ~(word - 1)
 
@@ -169,7 +169,9 @@ devmembuffer* read(devmem* devmemd, offset, length){
         printf("offset or length cant be < 0")
         return(-1);
 
-    virtual_base_addr = base_addr_offset & mask;
+    virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
+    // alignment
+
 
 }
 
