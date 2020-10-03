@@ -22,6 +22,24 @@ typedef struct DevMem {
     void* virtual_base;
 } devmem;
 
+void error(const char *s)
+{
+    perror(s);
+    assert(0);
+    exit(-1);
+}
+
+void malloc_error()
+{
+    fprintf(stderr, "Malloc error\n");
+    exit(-1);
+}
+
+void file_error(char *s)
+{
+    fprintf(stderr, "Couldn't open file: %s\n", s);
+    exit(0);
+}
 
 // linked list
 typedef struct node{
@@ -139,7 +157,7 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     devmemd.mask = ~(devmemd.word - 1);
 
     if (base_addr < 0 || length < 0){
-      return -1;
+        error("offset or length cant be < 0");
     }
     devmemd.base_addr = base_addr & ~(PAGE_SIZE-1);
     devmemd.base_addr_offset = base_addr - devmemd.base_addr;
@@ -152,17 +170,16 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     devmemd.fname = filename;
 
 	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) {
-		printf( "ERROR: could not open \"/dev/mem\"...\n" );
-		return(-1);
+		file_error( "ERROR: could not open \"/dev/mem\"...\n" );
 	}
 
 	devmemd.virtual_base = mmap( NULL, length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, offset );
 
-	if( devmemd.virtual_base == MAP_FAILED ) {
-		printf( "ERROR: mmap() failed...\n" );
-		close( fd );
-		return(-1);
-	}
+	//if( devmemd.virtual_base == MAP_FAILED ) {
+	//	perror("Virtual_addr_in mappong for absolute memory access failed!\n");
+	//	close( fd );
+	//	return(-1);
+	//}
     return devmemd;
 }
 
@@ -192,9 +209,9 @@ devmembuffer* read(devmem* devmemd, int offset, int length){
     int data[length];
     int virtual_base_addr;
 
-    if offset < 0 or length < 0;
-        printf("offset or length cant be < 0")
-        return(-1);
+    if (offset < 0 or length < 0){
+        error("offset or length cant be < 0");
+    }
 
     virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     // aligned base based on offset
@@ -225,8 +242,7 @@ void write(devmem* devmemd, int offset, int* data){
     u_int16_t* sdata;
 
     if (offset < 0 or length(data) <= 0){
-		printf( "ERROR: offset or data length cannot smaller than 0");
-		return(-1);
+		error( "ERROR: offset or data length cannot smaller than 0");
     }
 
     // # Compensate for the base_address not being what the user requested
@@ -234,8 +250,7 @@ void write(devmem* devmemd, int offset, int* data){
 
     // # Check that the operation is going write to an aligned location
     if (offset & ~devmemd->mask){
-		printf( "ERROR: mem location not aligned");
-		return(-1);
+		error( "ERROR: mem location not aligned");
     }
 
     // # Seek to the aligned offset
