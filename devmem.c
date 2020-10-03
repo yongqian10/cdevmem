@@ -181,8 +181,13 @@ unsigned int concatenate(unsigned x, unsigned y) {
     return x * pow + y;
 }
 
+// find length utility
+unsigned int length(void* array){
+    int length = sizeof array / sizeof *array;
+}
 
-devmembuffer* read(devmem* devmemd, offset, length){
+
+devmembuffer* read(devmem* devmemd, int offset, int length){
     int data[length];
     int virtual_base_addr;
 
@@ -204,8 +209,8 @@ devmembuffer* read(devmem* devmemd, offset, length){
 
 
 	for (i = 0; i < length; i++) {
-    	for (j = 0; j < 6; j++) {
-            concatenate(data[i], aligned_base[j]);
+    	for (j = 0; j < 4; j++) {
+            concatenate(data[i], aligned_base++);
         }
     }
 
@@ -213,6 +218,45 @@ devmembuffer* read(devmem* devmemd, offset, length){
     devmembuffer* devmembufferd = make_devmembuffer(abs_addr  + offset, data);
     return devmembufferd;
 }
+
+
+devmembuffer* write(devmem* devmemd, int offset, int* data){
+    if (offset < 0 or length(data) <= 0){
+		printf( "ERROR: offset or data length cannot smaller than 0");
+		return(-1);
+    }
+
+    // # Compensate for the base_address not being what the user requested
+    int offset += devmemd.base_addr_offset;
+
+    // # Check that the operation is going write to an aligned location
+    if (offset & ~self.mask){
+		printf( "ERROR: mem location not aligned");
+		return(-1);
+    }
+
+    // # Seek to the aligned offset
+    virtual_base_addr = devmemd.base_addr_offset & devmemd.mask;
+    void* aligned_base = virtual_base_addr + offset;
+
+    // # Read until the end of our aligned address
+    // for i in range(0, len(din), self.word):
+    //     self.debug('writing at position = {0}: 0x{1:x}'.
+    //                 format(self.mem.tell(), din[i]))
+    //     # Write one word at a time
+    //     mem.write(struct.pack('I', din[i]))
+    for(i=0; i<length(data), i+=devmemd.word){
+        sdata[3] = (uint4_t)(data[i]);
+        sdata[2] = (uint4_t)(data[i] >> 4u);
+        sdata[1] = (uint4_t)(data[i] >> 8u);
+        sdata[0] = (uint4_t)(data[i] >> 12u);
+
+    	for (j = 0; j < 4; j++) {
+			*aligned_base++ = sdata[j];
+        }
+    }
+}
+
 
 int main(){
 
