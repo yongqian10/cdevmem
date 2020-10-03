@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 
@@ -121,9 +122,9 @@ typedef struct DevMemBuffer {
 //    return memstruct->data[key];
 //}
 
-int devmembuffer_hexdump(devmembuffer* memstruct, int word_size, int words_per_row){
-    memstruct->data = data;
-}
+//int devmembuffer_hexdump(devmembuffer* memstruct, int word_size, int words_per_row){
+//    memstruct->data = data;
+//}
 
 // devmem
 devmem* make_devman(int base_addr, int length, int offset, char* filename){
@@ -134,30 +135,30 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     //devmem* devmemd = (devmem *)malloc(sizeof(devmem));
     devmem devmemd;
     memset(&devmemd, 0, sizeof(devmem));
-    devmemd->word = 4;
-    devmemd->mask = ~(word - 1)
+    devmemd.word = 4;
+    devmemd.mask = ~(devmemd.word - 1);
 
-    if (base_addr < 0 or length < 0){
+    if (base_addr < 0 || length < 0){
       return -1;
     }
-    devmemd->base_addr = base_addr & ~(PAGE_SIZE-1);
-    devmemd->base_addr_offset = base_addr - devmemd->base_addr;
+    devmemd.base_addr = base_addr & ~(PAGE_SIZE-1);
+    devmemd.base_addr_offset = base_addr - devmemd.base_addr;
 
-    stop = base_addr + length * devmemd->word;
-    if (stop % devmemd->mask){
-        stop = (stop + devmemd->word) &  ~(devmemd->word - 1);
+    stop = base_addr + length * devmemd.word;
+    if (stop % devmemd.mask){
+        stop = (stop + devmemd.word) &  ~(devmemd.word - 1);
     }
-    devmemd->length = stop - devmemd->base_addr;
-    devmemd->fname = filename;
+    devmemd.length = stop - devmemd.base_addr;
+    devmemd.fname = filename;
 
 	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) {
 		printf( "ERROR: could not open \"/dev/mem\"...\n" );
 		return(-1);
 	}
 
-	devmemd->virtual_base = mmap( NULL, length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, offset );
+	devmemd.virtual_base = mmap( NULL, length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, offset );
 
-	if( devmemd->virtual_base == MAP_FAILED ) {
+	if( devmemd.virtual_base == MAP_FAILED ) {
 		printf( "ERROR: mmap() failed...\n" );
 		close( fd );
 		return(-1);
@@ -168,8 +169,8 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
 devmembuffer* make_devmembuffer(int base_addr, unsigned int* data){
     devmembuffer devmembufferd;
     memset(&devmembufferd, 0, sizeof(devmembuffer));
-    devmembufferd->base_addr = base_addr;
-    devmembufferd->data = data;
+    devmembufferd.base_addr = base_addr;
+    devmembufferd.data = data;
     return devmembufferd;
 }
 
@@ -220,14 +221,16 @@ devmembuffer* read(devmem* devmemd, int offset, int length){
 }
 
 
-devmembuffer* write(devmem* devmemd, int offset, int* data){
+void write(devmem* devmemd, int offset, int* data){
+    u_int16_t* sdata;
+
     if (offset < 0 or length(data) <= 0){
 		printf( "ERROR: offset or data length cannot smaller than 0");
 		return(-1);
     }
 
     // # Compensate for the base_address not being what the user requested
-    int offset += devmemd->base_addr_offset;
+    u_int16_t offset += devmemd->base_addr_offset;
 
     // # Check that the operation is going write to an aligned location
     if (offset & ~devmemd->mask){
@@ -246,10 +249,10 @@ devmembuffer* write(devmem* devmemd, int offset, int* data){
     //     # Write one word at a time
     //     mem.write(struct.pack('I', din[i]))
     for(i=0; i<length(data), i+=devmemd->word){
-        sdata[3] = (uint4_t)(data[i]);
-        sdata[2] = (uint4_t)(data[i] >> 4u);
-        sdata[1] = (uint4_t)(data[i] >> 8u);
-        sdata[0] = (uint4_t)(data[i] >> 12u);
+        sdata[3] = (data[i]);
+        sdata[2] = (data[i] >> 4u);
+        sdata[1] = (data[i] >> 8u);
+        sdata[0] = (data[i] >> 12u);
 
     	for (j = 0; j < 4; j++) {
 			*aligned_base++ = sdata[j];
