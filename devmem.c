@@ -227,16 +227,16 @@ devmembuffer* write(devmem* devmemd, int offset, int* data){
     }
 
     // # Compensate for the base_address not being what the user requested
-    int offset += devmemd.base_addr_offset;
+    int offset += devmemd->base_addr_offset;
 
     // # Check that the operation is going write to an aligned location
-    if (offset & ~self.mask){
+    if (offset & ~devmemd->mask){
 		printf( "ERROR: mem location not aligned");
 		return(-1);
     }
 
     // # Seek to the aligned offset
-    virtual_base_addr = devmemd.base_addr_offset & devmemd.mask;
+    virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     void* aligned_base = virtual_base_addr + offset;
 
     // # Read until the end of our aligned address
@@ -245,7 +245,7 @@ devmembuffer* write(devmem* devmemd, int offset, int* data){
     //                 format(self.mem.tell(), din[i]))
     //     # Write one word at a time
     //     mem.write(struct.pack('I', din[i]))
-    for(i=0; i<length(data), i+=devmemd.word){
+    for(i=0; i<length(data), i+=devmemd->word){
         sdata[3] = (uint4_t)(data[i]);
         sdata[2] = (uint4_t)(data[i] >> 4u);
         sdata[1] = (uint4_t)(data[i] >> 8u);
