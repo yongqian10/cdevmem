@@ -104,7 +104,7 @@ void **list_to_array(list* l){
 
 typedef struct DevMemBuffer {
     int base_addr;
-    list* data;
+    unsigned int* data;
 } devmembuffer;
 
 // replace by make_list
@@ -131,7 +131,9 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     int stop;
 
     const int PAGE_SIZE = 4096;
-    devmem* devmemd = (devmem *)malloc(sizeof(devmem));
+    //devmem* devmemd = (devmem *)malloc(sizeof(devmem));
+    devmem devmemd;
+    memset(&devmemd, 0, sizeof(devmem));
     devmemd->word = 4;
     devmemd->mask = ~(word - 1)
 
@@ -163,7 +165,25 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     return devmemd;
 }
 
+devmembuffer* make_devmembuffer(int base_addr, unsigned int* data){
+    devmembuffer devmembufferd;
+    memset(&devmembufferd, 0, sizeof(devmembuffer));
+    devmembufferd->base_addr = base_addr;
+    devmembufferd->data = data;
+    return devmembufferd;
+}
+
+// concat utility
+unsigned int concatenate(unsigned x, unsigned y) {
+    unsigned pow = 10;
+    while(y >= pow)
+        pow *= 10;
+    return x * pow + y;
+}
+
+
 devmembuffer* read(devmem* devmemd, offset, length){
+    int data[length];
     int virtual_base_addr;
 
     if offset < 0 or length < 0;
@@ -171,9 +191,27 @@ devmembuffer* read(devmem* devmemd, offset, length){
         return(-1);
 
     virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
-    // alignment
+    // aligned base based on offset
+    void* aligned_base = virtual_base_addr + offset;
+
+    // # Read length words of size self.word and return it
+    // data = []
+    // for i in range(length):
+    //     data.append(struct.unpack('I', mem.read(self.word))[0])
+
+    // abs_addr = self.base_addr + virt_base_addr
+    // return DevMemBuffer(abs_addr + offset, data)
 
 
+	for (i = 0; i < length; i++) {
+    	for (j = 0; j < 6; j++) {
+            concatenate(data[i], aligned_base[j]);
+        }
+    }
+
+    abs_addr = devmemd->base_addr + virtual_base_addr;
+    devmembuffer* devmembufferd = make_devmembuffer(abs_addr  + offset, data);
+    return devmembufferd;
 }
 
 int main(){
