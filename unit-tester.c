@@ -20,10 +20,12 @@ unsigned char *read_file(char *filename)
 }
 
 int main(){
-//int fd = open("/dev/mem", (O_RDWR | O_SYNC));
-//void* virtual_base = mmap(NULL, 0x04000000, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, 0x00 );
+int fd = open("/dev/mem", (O_RDWR | O_SYNC));
+void* virtual_base = mmap(NULL, 0x04, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, 0x00 );
 //// aligned base based on offset
-//void* aligned_base = virtual_base + 0x21000;
+void* aligned_base = (void*)((char*)virtual_base + 10);
+printf("%p\n", virtual_base);
+printf("%p\n", aligned_base);
 //
 //
 //// small test snippet
