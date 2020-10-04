@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 typedef struct Words {
     int size;
@@ -25,7 +28,6 @@ typedef struct DevMem {
 void error(const char *s)
 {
     perror(s);
-    assert(0);
     exit(-1);
 }
 
@@ -145,7 +147,7 @@ typedef struct DevMemBuffer {
 //}
 
 // devmem
-devmem* make_devman(int base_addr, int length, int offset, char* filename){
+devmem make_devman(int base_addr, int length, char* filename){
     int fd;
     int stop;
 
@@ -169,11 +171,11 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     devmemd.length = stop - devmemd.base_addr;
     devmemd.fname = filename;
 
-	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) {
+	if( ( fd = open( devmemd.fname, ( O_RDWR | O_SYNC ) ) ) == -1 ) {
 		file_error( "ERROR: could not open \"/dev/mem\"...\n" );
 	}
 
-	devmemd.virtual_base = mmap( NULL, length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, offset );
+	devmemd.virtual_base = mmap( NULL, devmemd.length, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, devmemd.base_addr );
 
 	//if( devmemd.virtual_base == MAP_FAILED ) {
 	//	perror("Virtual_addr_in mappong for absolute memory access failed!\n");
@@ -183,7 +185,7 @@ devmem* make_devman(int base_addr, int length, int offset, char* filename){
     return devmemd;
 }
 
-devmembuffer* make_devmembuffer(int base_addr, unsigned int* data){
+devmembuffer make_devmembuffer(int base_addr, unsigned int* data){
     devmembuffer devmembufferd;
     memset(&devmembufferd, 0, sizeof(devmembuffer));
     devmembufferd.base_addr = base_addr;
@@ -205,17 +207,17 @@ unsigned int length(void* array){
 }
 
 
-devmembuffer* read(devmem* devmemd, int offset, int length){
+devmembuffer read(devmem* devmemd, int offset, int length){
     int data[length];
     int virtual_base_addr;
 
-    if (offset < 0 or length < 0){
+    if (offset < 0 || length < 0){
         error("offset or length cant be < 0");
     }
 
     virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
     // aligned base based on offset
-    void* aligned_base = virtual_base_addr + offset;
+    void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
 
     // # Read length words of size self.word and return it
     // data = []
@@ -233,20 +235,20 @@ devmembuffer* read(devmem* devmemd, int offset, int length){
     }
 
     abs_addr = devmemd->base_addr + virtual_base_addr;
-    devmembuffer* devmembufferd = make_devmembuffer(abs_addr  + offset, data);
+    devmembuffer devmembufferd = make_devmembuffer(abs_addr  + offset, data);
     return devmembufferd;
 }
 
 
 void write(devmem* devmemd, int offset, int* data){
-    u_int16_t* sdata;
+    unsigned int* sdata;
 
     if (offset < 0 or length(data) <= 0){
 		error( "ERROR: offset or data length cannot smaller than 0");
     }
 
     // # Compensate for the base_address not being what the user requested
-    u_int16_t offset += devmemd->base_addr_offset;
+    unsigned int offset += devmemd->base_addr_offset;
 
     // # Check that the operation is going write to an aligned location
     if (offset & ~devmemd->mask){
@@ -255,7 +257,7 @@ void write(devmem* devmemd, int offset, int* data){
 
     // # Seek to the aligned offset
     virtual_base_addr = devmemd->base_addr_offset & devmemd->mask;
-    void* aligned_base = virtual_base_addr + offset;
+    void* aligned_base = devmemd->virtual_base + virtual_base_addr + offset;
 
     // # Read until the end of our aligned address
     // for i in range(0, len(din), self.word):
